@@ -1,86 +1,72 @@
 from datetime import datetime, timedelta
 import holidays
+import calendar
 
-escolha = input("Digite 'M' para calcular os dias úteis de um mês ou 'A' para calcular os dias úteis de todos os meses de um ano: ")
+def calcular_dias_uteis(ano, mes=None):
+    feriados_br = holidays.Brazil()
 
-if escolha.upper() == 'A':
-    # Código para calcular os dias úteis de todos os meses de um ano
-    feriados_br = holidays.Brazil()  # Defina os feriados nacionais do Brasil
+    # Feriados do Rio Grande do Sul
+    feriados_rs = [
+        (datetime(ano, 9, 20), "Revolução Farroupilha"),
+        # Adicione os feriados do RS desejados seguindo o formato (datetime(ano, mês, dia), "Nome do Feriado")
+    ]
 
-    ano = input("Digite o ano (exemplo: 2024): ")
-    if ano.isdigit():  # Verifica se é um número
-        ano = int(ano)
+    if mes is None:
+        opcao = input("Digite 'A' para o ano inteiro ou 'M' para um mês específico: ").upper()
 
-        for mes in range(1, 13):
-            # Determine o primeiro dia e último dia do mês
-            primeiro_dia = datetime(ano, mes, 1)
-            ultimo_dia = datetime(ano, mes % 12 + 1, 1) if mes < 12 else datetime(ano + 1, 1, 1)
-            ultimo_dia -= timedelta(days=1)
-            
-            # Converta as datas para objetos datetime
-            primeiro_dia = datetime.combine(primeiro_dia, datetime.min.time())
-            ultimo_dia = datetime.combine(ultimo_dia, datetime.max.time())
-
-            # Gere as datas para o intervalo
-            dates = (primeiro_dia + timedelta(idx) for idx in range((ultimo_dia - primeiro_dia).days + 1))
-
-            # Conte os dias úteis excluindo os feriados e registre os feriados
-            res = sum(1 for day in dates if day.weekday() < 5 and day not in feriados_br)
-
-            # Imprima o total de dias úteis no intervalo
-            print(f"Total de dias úteis no mês {mes}/{ano}: {res}")
-
-            # Obtenha os feriados do mês
-            feriados_mes = [(date.strftime('%d/%m/%Y'), name) for date, name in feriados_br.items() if primeiro_dia.date() <= date <= ultimo_dia.date()]
-
-            # Imprima os feriados do mês com a data
-            print("Feriados do mês:")
-            for data, feriado in feriados_mes:
-                print(f"{feriado} - {data}")
-            print()
-
-    else:
-        print("Ano inválido. Digite um número válido.")
-
-elif escolha.upper() == 'M':
-    # Código para calcular os dias úteis de um mês
-    feriados_br = holidays.Brazil()  # Defina os feriados nacionais do Brasil
-
-    ano = input("Digite o ano (exemplo: 2024): ")
-    if ano.isdigit():  # Verifica se é um número
-        ano = int(ano)
-
-        mes = int(input("Digite o mês (exemplo: 1 para janeiro): "))
-        if 1 <= mes <= 12:
-            # Determine o primeiro dia e último dia do mês
-            primeiro_dia = datetime(ano, mes, 1)
-            ultimo_dia = datetime(ano, mes % 12 + 1, 1) if mes < 12 else datetime(ano + 1, 1, 1)
-            ultimo_dia -= timedelta(days=1)
-            
-            # Converta as datas para objetos datetime
-            primeiro_dia = datetime.combine(primeiro_dia, datetime.min.time())
-            ultimo_dia = datetime.combine(ultimo_dia, datetime.max.time())
-
-            # Gere as datas para o intervalo
-            dates = (primeiro_dia + timedelta(idx) for idx in range((ultimo_dia - primeiro_dia).days + 1))
-
-            # Conte os dias úteis excluindo os feriados e registre os feriados
-            res = sum(1 for day in dates if day.weekday() < 5 and day not in feriados_br)
-
-            # Imprima o total de dias úteis no intervalo
-            print("Total de dias úteis no mês : " + str(res))
-
-            # Obtenha os feriados do mês
-            feriados_mes = [(date.strftime('%d/%m/%Y'), name) for date, name in feriados_br.items() if primeiro_dia.date() <= date <= ultimo_dia.date()]
-
-            # Imprima os feriados do mês com a data
-            print("Feriados do mês:")
-            for data, feriado in feriados_mes:
-                print(f"{feriado} - {data}")
+        if opcao == 'A':
+            for mes in range(1, 13):
+                calcular_mes(feriados_br, feriados_rs, ano, mes)
+        elif opcao == 'M':
+            mes = int(input("Digite o número do mês (exemplo: 1 para janeiro): "))
+            calcular_mes(feriados_br, feriados_rs, ano, mes)
         else:
-            print("Mês inválido. Digite um número de 1 a 12.")
+            print("Opção inválida.")
     else:
-        print("Ano inválido. Digite um número válido.")
+        calcular_mes(feriados_br, feriados_rs, ano, mes)
 
-else:
-    print("Escolha inválida.")
+def calcular_mes(feriados_br, feriados_rs, ano, mes):
+    primeiro_dia = datetime(ano, mes, 1)
+    ultimo_dia = datetime(ano, mes % 12 + 1, 1) if mes < 12 else datetime(ano + 1, 1, 1)
+    ultimo_dia -= timedelta(days=1)
+
+    cal = calendar.monthcalendar(ano, mes)
+    dias_semana = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom']
+
+    print(f"Para o mês {mes}/{ano}:")
+    print("O intervalo original : " + str(primeiro_dia.date()) + " " + str(ultimo_dia.date()))
+
+    for dia in dias_semana:
+        print(f"{dia:^4}", end=' ')
+    print()
+
+    for week in cal:
+        for day in week:
+            if day != 0:
+                current_date = datetime(ano, mes, day)
+                if current_date.weekday() >= 5:  # Fim de semana
+                    print('\033[94m' + f"{day:<4}", end=' ')
+                elif current_date in feriados_br or current_date.weekday() == 6 or any(date.date() == current_date.date() for date, _ in feriados_rs):  # Feriado
+                    print('\033[91m' + f"{day:<4}", end=' ')
+                else:  # Dias úteis
+                    print('\033[92m' + f"{day:<4}", end=' ')
+            else:
+                print(" " * 4, end=' ')
+        print()
+
+    res = sum(1 for day in range(1, ultimo_dia.day + 1)
+              if datetime(ano, mes, day).weekday() < 5 and datetime(ano, mes, day) not in feriados_br)
+    print("\033[90mTotal de dias úteis no mês : " + str(res))
+
+    feriados_mes = [(date.strftime('%d/%m/%Y'), name) for date, name in feriados_br.items() if
+                    primeiro_dia.date() <= date <= ultimo_dia.date()]
+    feriados_mes += [(date.strftime('%d/%m/%Y'), name) for date, name in feriados_rs if primeiro_dia.date() <= date.date() <= ultimo_dia.date()]
+    
+    print("\033[90mFeriados do mês:")
+    for data, feriado in feriados_mes:
+        print(f"{feriado} - {data}")
+
+    print()
+
+ano = int(input("Digite o ano (exemplo: 2024): "))
+calcular_dias_uteis(ano)
