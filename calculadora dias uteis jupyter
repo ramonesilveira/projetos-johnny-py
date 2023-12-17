@@ -1,0 +1,126 @@
+from datetime import datetime, timedelta
+import holidays
+import calendar
+from IPython.display import display, HTML
+
+def imprimir_calendario_html(ano, mes, feriados_br, feriados_rs, periodo_ferias=None):
+    # Cria uma lista para armazenar as linhas HTML da tabela
+    table_rows = []
+
+    # Configuração inicial das datas
+    primeiro_dia = datetime(ano, mes, 1)
+    ultimo_dia = datetime(ano, mes % 12 + 1, 1) if mes < 12 else datetime(ano + 1, 1, 1)
+    ultimo_dia -= timedelta(days=1)
+
+    # Configuração do calendário
+    cal = calendar.monthcalendar(ano, mes)
+    dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+
+    # Informações sobre o mês
+    table_rows.append("<tr>")
+    table_rows.append(f"<th colspan='7'>Para o mês {mes}/{ano}:</th>")
+    table_rows.append("</tr>")
+    table_rows.append("<tr>")
+    for dia in dias_semana:
+        table_rows.append(f"<th>{dia}</th>")
+    table_rows.append("</tr>")
+
+    # Construção do calendário com cores
+    for week in cal:
+        table_rows.append("<tr>")
+        for day in week:
+            if day != 0:
+                current_date = datetime(ano, mes, day)
+                if current_date.weekday() >= 5:
+                    table_rows.append(f"<td style='background-color: #87CEEB'>{day}</td>")
+                elif current_date in feriados_br:
+                    table_rows.append(f"<td style='background-color: #FF6347'>{day}</td>")
+                elif any(date.date() == current_date.date() for date, _ in feriados_rs):
+                    table_rows.append(f"<td style='background-color: #FF6347'>{day}</td>")
+                elif periodo_ferias and (current_date >= periodo_ferias[0] and current_date <= periodo_ferias[1]):
+                    table_rows.append(f"<td style='background-color: #FFD700'>{day}</td>")
+                else:
+                    table_rows.append(f"<td style='background-color: #90EE90'>{day}</td>")
+            else:
+                table_rows.append("<td></td>")
+        table_rows.append("</tr>")
+
+    # Monta o HTML final da tabela
+    html_table = "<table border='1'>" + "".join(table_rows) + "</table>"
+
+    # Exibe a tabela estilizada
+    display(HTML(html_table))
+
+def calcular_mes(ano, mes, feriados_br, feriados_rs, periodo_ferias=None):
+    dias_uteis = imprimir_calendario_html(ano, mes, feriados_br, feriados_rs, periodo_ferias)
+
+    # Inicializa os valores totais
+    bolsa_auxilio_total = 0
+    vale_transporte_total = 0
+    vale_alimentacao_total = 0
+    salario_total = 0
+
+    # Calcula os valores para cada dia útil do mês
+    for day in range(1, calendar.monthrange(ano, mes)[1] + 1):
+        current_date = datetime(ano, mes, day)
+        if (not periodo_ferias and current_date.weekday() < 5 and current_date not in feriados_br):
+            bolsa_auxilio_total += 16.62
+            vale_transporte_total += 4.8 * 4
+            vale_alimentacao_total += 24.5
+            salario_total += 16.62 + 24.5  # Salário por dia útil
+        elif periodo_ferias and (current_date >= periodo_ferias[0] and current_date <= periodo_ferias[1]):
+            bolsa_auxilio_total += 16.62
+            vale_transporte_total += 4.8 * 4
+            vale_alimentacao_total += 24.5
+            salario_total += 16.62 + 24.5  # Salário por dia útil
+
+    # Imprime os valores totais para o mês
+    print("\033[90mTotal de dias úteis no mês:", dias_uteis)
+    print(f"O total de salário no mês será de R$ {round(salario_total, 2)}")
+    print(f"O total de bolsa-auxilio no mês será de R$ {round(bolsa_auxilio_total, 2)}")
+    print(f"O total de vale transporte no mês será de R$ {round(vale_transporte_total, 2)}")
+    print(f"O total de vale alimentação no mês será de R$ {round(vale_alimentacao_total, 2)}")
+
+    # Imprimindo os feriados no mesmo lugar dos cálculos
+    print("\nFeriados:")
+    for date, name in feriados_br.items():
+        if date.month == mes:
+            print(f"{date.strftime('%d/%m')}: {name}")
+    for date, name in feriados_rs:
+        if date.month == mes:
+            print(f"{date.strftime('%d/%m')}: {name}")
+
+def calcular_dias_uteis(ano, mes=None):
+    feriados_br = holidays.Brazil()
+    feriados_rs = [
+        (datetime(ano, 9, 20), "Revolução Farroupilha"),
+        # Adicione os feriados do RS desejados seguindo o formato (datetime(ano, mês, dia), "Nome do Feriado")
+    ]
+
+    if mes is None:
+        opcao = input("Digite 'A' para o ano inteiro, 'M' para um mês específico ou 'MF' para um período de férias: ").upper()
+
+        if opcao == "A":
+            for m in range(1, 13):
+                calcular_mes(ano, m, feriados_br, feriados_rs)
+        elif opcao == "M":
+            mes = int(input("Digite o número do mês (exemplo: 1 para janeiro): "))
+            calcular_mes(ano, mes, feriados_br, feriados_rs)
+        elif opcao == "MF":
+            mes = int(input("Digite o número do mês (exemplo: 1 para janeiro): "))
+            if mes < 1 or mes > 12:
+                print("Mês inválido.")
+            else:
+                dia_inicio = int(input("Digite o dia de início das férias: "))
+                dia_fim = int(input("Digite o dia de fim das férias: "))
+                data_inicio = datetime(ano, mes, dia_inicio)
+                data_fim = datetime(ano, mes, dia_fim)
+                periodo_ferias = (data_inicio, data_fim)
+                calcular_mes(ano, mes, feriados_br, feriados_rs, periodo_ferias)
+        else:
+            print("Opção inválida.")
+    else:
+        calcular_mes(ano, mes, feriados_br, feriados_rs)
+
+ano = int(input("Digite o ano (exemplo: 2024): "))
+calcular_dias_uteis(ano)
